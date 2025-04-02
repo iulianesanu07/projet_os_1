@@ -83,7 +83,7 @@ void gestion_action(int choix) {
 
     char disk_name[100];
     int disk_size;
-    
+
     crea_disk(disk_name, &disk_size);
 
     new_disk(disk_name, disk_size);
@@ -107,6 +107,35 @@ void gestion_action(int choix) {
   printf("\n\n\n");
 }
 
+/* outil debug/dev
+void calculate_fs_structure(size_t disk_size) {
+    // Nombre total de blocs
+    size_t total_blocks = disk_size / BLOCK_SIZE;
+    
+    // Nombre d'inodes avec un ratio 1 inode pour 10 blocs
+    size_t total_inodes = total_blocks / 10;
+
+    // Espace occupé par la table des inodes
+    size_t inode_table_size = total_inodes * INODE_SIZE;
+    size_t inode_table_blocks = (inode_table_size + BLOCK_SIZE - 1) / BLOCK_SIZE; // Arrondi supérieur
+
+    // Taille de la bitmap des blocs (1 bit par bloc)
+    size_t bitmap_size = total_blocks / 8;
+    size_t bitmap_blocks = (bitmap_size + BLOCK_SIZE - 1) / BLOCK_SIZE; // Arrondi supérieur
+    
+    // Nombre de blocs de données disponibles après allocation des structures
+    size_t data_blocks = total_blocks - (1 + bitmap_blocks + inode_table_blocks); // 1 pour superbloc
+
+    // Affichage des résultats
+    printf("Disque : %lu MB (%lu octets)\n", disk_size / (1024 * 1024), disk_size);
+    printf("- Nombre total de blocs : %lu\n", total_blocks);
+    printf("- Nombre total d'inodes : %lu\n", total_inodes);
+    printf("- Taille de la table des inodes : %lu octets (%lu blocs)\n", inode_table_size, inode_table_blocks);
+    printf("- Taille de la bitmap des blocs : %lu octets (%lu blocs)\n", bitmap_size, bitmap_blocks);
+    printf("- Blocs disponibles pour les données : %lu\n", data_blocks);
+}
+*/
+
 int main() {
   int choix = 0;
 
@@ -123,7 +152,8 @@ int main() {
     scanf("%d", &choix);
 
     // flush buffer scanf
-    while (getchar() != '\n');
+    while (getchar() != '\n')
+      ;
 
     // Gérer l'action en fonction du choix
     gestion_action(choix);
