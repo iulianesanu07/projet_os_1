@@ -1,24 +1,47 @@
 #ifndef __FS__H__
 #define __FS__H__
 
+#include <time.h>
+#include <stdio.h>
 #define SUCCESS_CREA_DISK 0
 #define FAILURE_CREA_DISK 1
 
 #define BLOCK_SIZE 512 // Taille d'un bloc en octets
-#define MAX_FILENAME_LENGTH 100
+#define DISK_SIZE_MB 6
+#define MAX_FILENAME_LENGTH 25
+#define INODE_SIZE 128
+
+#define INODE_COUNT 1024
+#define BLOCK_COUNT 10240
 
 // Offsets fixes dans le fichier .img
 #define SUPERBLOCK_OFFSET 0
-#define INODE_BITMAP_OFFSET BLOCK_SIZE
-#define BLOCK_BITMAP_OFFSET (INODE_BITMAP_OFFSET + X * BLOCK_SIZE)
-#define INODE_TABLE_OFFSET (BLOCK_BITMAP_OFFSET + Y * BLOCK_SIZE)
-#define DATA_BLOCKS_OFFSET (INODE_TABLE_OFFSET + Z * BLOCK_SIZE)
-#define INODE_SIZE 128
+#define BLOCK_BITMAP_OFFSET BLOCK_SIZE
+#define INODE_TABLE_OFFSET BLOCK_BITMAP_OFFSET + 1280
+#define DATA_BLOCKS_OFFSET INODE_TABLE_OFFSET + 131072
+
+// Offsets fixes pour infos inodes
+#define INODE_ID_OFFSET             0
+#define INODE_SIZE_OFFSET           INODE_ID_OFFSET + 4                       
+#define INODE_TYPE_OFFSET           INODE_SIZE_OFFSET + 4                     
+#define INODE_PERMISSIONS_OFFSET    INODE_TYPE_OFFSET + 2       
+#define INODE_BLOCKS_OFFSET         INODE_PERMISSIONS_OFFSET + 2        
+#define INODE_BLOCK_COUNT_OFFSET    INODE_BLOCKS_OFFSET + 40            
+#define INODE_CREATED_AT_OFFSET     INODE_BLOCK_COUNT_OFFSET + 4      
+#define INODE_MODIFIED_AT_OFFSET    INODE_CREATED_AT_OFFSET + 8       
+#define INODE_NAME_OFFSET           INODE_MODIFIED_AT_OFFSET + 8      
 
 #define MAX_FILENAME_LEN 32
 #define MAX_DIRECTORY_ENTRIES 16
 
-#define TYPE_DIRECTORY 1
+// errors/ info
+#define INODE_TABLE_FULL -1
+#define BLOCK_BITMAP_FULL -2
+#define COULD_NOT_CREATE_NEW_FILE -3
+
+#define TYPE_INODE_ROOT_DIR 0
+#define TYPE_INODE_DIR 1
+#define TYPE_INODE_FILE 2
 
 // Structure pour une entrée de répertoire
 typedef struct {
@@ -41,24 +64,30 @@ typedef struct {
   unsigned int free_blocks; // Nombre de blocs libres
   unsigned int bitmap_start;
   unsigned int inode_table_start;
-  unsigned int first_data_block;
+  unsigned int data_block_start;
 } Superblock;
 
 typedef struct {
   int id;           // Numéro unique de l'inode
   int size;         // Taille du fichier en octets
-  char type;        // 1 = dossier, 0 = fichier
+  char type;      
   char permissions; // Droits d'accès (ex: 755)
   int blocks[10];   // Blocs de données du fichier
   int block_count;
-  int created_at;   // Timestamp de création
-  int modified_at;  // Timestamp de modification
-  char name[20];
+  time_t created_at;   // Timestamp de création
+  time_t modified_at;  // Timestamp de modification
+  char name[MAX_FILENAME_LENGTH];
 } inode_t;
 
 // Variable globale pour stocker le disque select
 
-int new_disk(const char *file_name, int size_mb);
-void init_disk(const char *file_name, int disk_size);
+int new_disk(const char *disk_name, int size_mb);
+void init_disk(const char *disk_name, int disk_size);
+void init_root_dir(const char *disk_name);
+int new_file(const char *disk_name, char file_type, char permissions,char file_name[MAX_FILENAME_LENGTH]);
+int first_empty_inode_slot(FILE *disk);
+int first_empty_block_slot(FILE *disk);
+int get_block_slot(FILE* disk, int id_block_bitmap);
+
 
 #endif //__FS__H__

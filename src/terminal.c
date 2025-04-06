@@ -71,7 +71,39 @@ void cmd_size(char *arg) {
     return;
   }
 
-  printf("Taille du disque : %u MB\n", disk_size);
+  printf("Taille du disque : %u MB\n", disk_size / (1024 * 1024));
+}
+
+char *current_dir(const char *selected_disk,
+                  char dir_name[MAX_FILENAME_LENGTH]) {
+
+  // Affiche l'offset actuel avant fseek
+  long current_offset = ftell(disk);
+  printf("Offset avant fseek: %ld\n", current_offset);
+
+  // Déplace le curseur à l'offset souhaité
+  fseek(disk, INODE_TABLE_OFFSET + INODE_NAME_OFFSET, SEEK_SET);
+
+  // Affiche l'offset après fseek pour vérifier où il mène
+  current_offset = ftell(disk);
+  printf("Offset après fseek: %ld\n", current_offset);
+
+  // Lit le nom du répertoire
+  size_t bytes_read =
+      fread(dir_name, sizeof(char), MAX_FILENAME_LENGTH, disk);
+
+  // Vérifie si la lecture a réussi
+  if (bytes_read != MAX_FILENAME_LENGTH) {
+    printf("Avertissement : %zu octets lus au lieu de %d.\n", bytes_read,
+           MAX_FILENAME_LENGTH);
+  }
+
+  // S'assure que le nom est bien une chaîne C valide
+  dir_name[MAX_FILENAME_LENGTH - 1] = '\0';
+  
+  printf("Nom du répertoire : '%s'\n", dir_name);
+
+  return dir_name;
 }
 
 // Fonction principale du terminal
@@ -87,8 +119,11 @@ void enter_terminal_mode() {
 
   char command[200];
 
+  char dir_name[MAX_FILENAME_LENGTH];
+  current_dir(selected_disk, dir_name);
+
   while (1) {
-    printf("> ");
+    printf("%s >", dir_name);
     fflush(stdout);
     if (!fgets(command, sizeof(command), stdin)) {
       printf("Erreur de lecture.\n");

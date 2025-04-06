@@ -64,7 +64,8 @@ void crea_disk(char disk_name[], int *disk_size) {
   fgets(disk_name, 100, stdin);
 
   disk_name[strcspn(disk_name, "\n")] = 0;
-
+  
+  /* pour disque de taille variable, a ajouter si suffisement de temps.
   while (!(*disk_size > 0 && *disk_size <= 100)) {
     printf("\nRappel des regles : \n");
     printf("\t-Taille disque entre 1 et 100MB\n");
@@ -74,6 +75,10 @@ void crea_disk(char disk_name[], int *disk_size) {
 
   while (getchar() != '\n')
     ;
+  */ 
+
+  *disk_size = DISK_SIZE_MB;
+  return;
 }
 
 void gestion_action(int choix) {
@@ -93,11 +98,15 @@ void gestion_action(int choix) {
     printf("\nVous avez choisi d'afficher les disques.\n");
     list_disks();
     break;
+  
+/*
   case 3:
     printf("\nVous avez choisi de supprimer un disque.\n");
     // Ajoute ici la logique pour supprimer un disque
     break;
-  case 4:
+*/
+
+  case 3:
     printf("\nFin programme.\n");
     exit(0); // Terminer le programme
   default:
@@ -144,8 +153,8 @@ int main() {
     printf("Veuillez sélectionner une action parmi les suivantes : \n");
     printf("\t-Créer un disque [1]\n");
     printf("\t-Afficher les disques [2]\n");
-    printf("\t-Supprimer un disque [3]\n");
-    printf("\t-Fin programme [4]\n");
+    //printf("\t-Supprimer un disque [3]\n");
+    printf("\t-Fin programme [3]\n");
 
     // Lire l'input de l'utilisateur
     printf("> ");
