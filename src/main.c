@@ -6,8 +6,6 @@
 #include "fs.h"
 #include "terminal.h"
 
-void enter_terminal_mode();
-
 char selected_disk[MAX_FILENAME_LENGTH];
 
 // Fonction pour lister les fichiers .img dans le répertoire courant

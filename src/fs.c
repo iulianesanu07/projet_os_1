@@ -43,41 +43,6 @@ int new_disk(const char *disk_name, int size_mb) {
   return SUCCESS_CREA_DISK;
 }
 
-/*
-void create_root_directory(FILE *disk) {
-  Superblock sb;
-  fseek(disk, 0, SEEK_SET);
-  fread(&sb, sizeof(Superblock), 1, disk);
-
-  int root_inode = 0;
-
-  // Lire la table des inodes
-  inode_t inode_table[sb.inode_count];
-  fseek(disk, sb.inode_table_start, SEEK_SET);
-  fread(inode_table, sizeof(inode_t), sb.inode_count, disk);
-
-  // Initialiser l'inode de la racine
-  inode_table[root_inode].type = TYPE_DIRECTORY;
-  inode_table[root_inode].size = sizeof(Directory);
-  inode_table[root_inode].blocks[0] = sb.first_data_block;
-  inode_table[root_inode].block_count = 1;
-
-  fseek(disk, sb.inode_table_start * BLOCK_SIZE, SEEK_SET);
-  fwrite(inode_table, sizeof(inode_t), sb.inode_count, disk);
-
-  // Initialiser le contenu du répertoire root
-  Directory root_dir;
-  root_dir.entry_count = 2;
-  root_dir.entries[0] = (DirectoryEntry){".", root_inode};
-  root_dir.entries[1] = (DirectoryEntry){"..", root_inode};
-
-  fseek(disk, sb.first_data_block * BLOCK_SIZE, SEEK_SET);
-  fwrite(&root_dir, sizeof(Directory), 1, disk);
-
-  printf("✅ Répertoire root '/' créé avec succès !\n");
-}
-*/
-
 void init_disk(const char *disk_name, int disk_size) {
   Superblock sb;
   sb.disk_size = disk_size * 1024 * 1024;
@@ -106,13 +71,15 @@ void init_disk(const char *disk_name, int disk_size) {
   return;
 }
 
+
 int first_empty_inode_slot(FILE *disk) {
   for (int i = 0; i < INODE_COUNT; i++) {
-    fseek(disk, INODE_TABLE_OFFSET + (i * INODE_SIZE), SEEK_SET);
+    fseek(disk, INODE_TABLE_OFFSET + (i * INODE_SIZE) + INODE_CREATED_AT_OFFSET, SEEK_SET);
 
-    int id = -1;
-    fread(&id, sizeof(int), 1, disk);
-    if (id == 0) {
+    time_t verif = -1;
+    fread(&verif, sizeof(time_t), 1, disk);
+//    printf("verif lu : %d\n", (int)verif);
+    if (verif == 0) {
       return i;
     }
   }
@@ -135,7 +102,6 @@ int first_empty_block_slot(FILE *disk) {
 
 // globalement ca converti un block vide sur la bitmap en son emplacement reel dans le disque
 int get_block_slot(FILE* disk, int id_block_bitmap) {
-  
   
   return DATA_BLOCKS_OFFSET + (id_block_bitmap * BLOCK_SIZE);
 }
@@ -165,15 +131,14 @@ int new_file(const char *disk_name, char file_type, char permissions, char file_
   bool used = 1;
   fseek(disk, BLOCK_BITMAP_OFFSET + block_id, SEEK_SET);
   fwrite(&used, sizeof(bool), 1, disk);
-  puts("baaaaah ?");
     
   inode_t new_inode;
   new_inode.id = inode;
-  new_inode.size = -1;
+  new_inode.size = 0;
   new_inode.type = file_type;
   new_inode.permissions = permissions;
   new_inode.blocks[0] = get_block_slot(disk, block_id);
-  new_inode.block_count = 0;
+  new_inode.block_count = 1;
   new_inode.created_at = time(NULL);
   new_inode.modified_at = time(NULL);
   strncpy(new_inode.name, file_name, MAX_FILENAME_LENGTH); 
@@ -187,7 +152,6 @@ int new_file(const char *disk_name, char file_type, char permissions, char file_
 }
 
 void init_root_dir(const char*disk_name) {
-  puts("bah ?");
   new_file(disk_name, TYPE_INODE_ROOT_DIR, 0b11110101, "root");
 
   return;

@@ -4,26 +4,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Prototypes internes
-void cmd_ls(char *arg);
-void cmd_touch(char *arg);
-void cmd_size(char *arg);
-
-// Ptr vers disque
-FILE *disk;
-
-// Structure pour associer une commande à une fonction
-typedef struct {
-  char *name;
-  void (*func)(char *arg);
-} Command;
-
-// Liste des commandes disponibles
 Command commands[] = {
-    {"ls", cmd_ls},
-    {"size", cmd_size},
-    {"touch", cmd_touch},
-    {NULL, NULL} // Fin du tableau
+  {"ls", cmd_ls}, 
+  {"size", cmd_size},   
+  {"touch", cmd_touch},
+  {"chmod", cmd_chmod}, 
+  {"mkdir", cmd_mkdir}, 
+  {NULL, NULL} // Fin du tableau
 };
 
 // Fonction pour exécuter la commande correspondante
@@ -43,11 +30,18 @@ void cmd_ls(char *arg) {
 }
 
 void cmd_touch(char *arg) {
+  // Verification validite argument a ajouter
   if (!arg) {
     printf("Usage : touch <nom_fichier>\n");
     return;
   }
-  printf("Création du fichier '%s'... (À implémenter)\n", arg);
+
+  int inode = new_file(selected_disk, TYPE_INODE_FILE, 0b11111010, arg);
+  printf("inode du fichier %s : %d\n", arg, inode);
+  
+  // fonction add file to dir a implementer 
+  
+  return;
 }
 
 void cmd_size(char *arg) {
@@ -74,39 +68,34 @@ void cmd_size(char *arg) {
   printf("Taille du disque : %u MB\n", disk_size / (1024 * 1024));
 }
 
-char *current_dir(const char *selected_disk,
-                  char dir_name[MAX_FILENAME_LENGTH]) {
+void cmd_chmod(char *arg) {
+  printf("A implementer\n");
 
-  // Affiche l'offset actuel avant fseek
-  long current_offset = ftell(disk);
-  printf("Offset avant fseek: %ld\n", current_offset);
+  return;
+}
 
-  // Déplace le curseur à l'offset souhaité
-  fseek(disk, INODE_TABLE_OFFSET + INODE_NAME_OFFSET, SEEK_SET);
+void cmd_mkdir(char *arg) { return; }
 
-  // Affiche l'offset après fseek pour vérifier où il mène
-  current_offset = ftell(disk);
-  printf("Offset après fseek: %ld\n", current_offset);
+char* dir_name_getter(int current_dir_inode) {
+  static char dir_name[MAX_FILENAME_LENGTH];
 
-  // Lit le nom du répertoire
-  size_t bytes_read =
-      fread(dir_name, sizeof(char), MAX_FILENAME_LENGTH, disk);
+  fseek(disk, current_dir_inode + INODE_NAME_OFFSET, SEEK_SET);
+  size_t bytes_read = fread(dir_name, sizeof(char), MAX_FILENAME_LENGTH, disk);
 
-  // Vérifie si la lecture a réussi
   if (bytes_read != MAX_FILENAME_LENGTH) {
-    printf("Avertissement : %zu octets lus au lieu de %d.\n", bytes_read,
-           MAX_FILENAME_LENGTH);
+    printf("Avertissement : %zu octets lus au lieu de %d.\n", bytes_read, MAX_FILENAME_LENGTH);
   }
 
-  // S'assure que le nom est bien une chaîne C valide
   dir_name[MAX_FILENAME_LENGTH - 1] = '\0';
-  
-  printf("Nom du répertoire : '%s'\n", dir_name);
-
   return dir_name;
 }
 
-// Fonction principale du terminal
+/**
+ * @brief Fonction d'initialisation et de gestion du terminal
+ * Cette fonction est en deux parties, la premiere etant l'initialisation du terminal 
+ * et des differentes variables necessaires a son fonctionnement. La deuxieme etant le 
+ * "coeur" du terminal qui gere les differentes commandes.
+ */
 void enter_terminal_mode() {
 
   disk = fopen(selected_disk, "r+b");
@@ -118,12 +107,13 @@ void enter_terminal_mode() {
   printf("Mode terminal actif. Tapez 'exit' pour quitter.\n");
 
   char command[200];
+  memset(current_path, 0, sizeof(current_path));
 
-  char dir_name[MAX_FILENAME_LENGTH];
-  current_dir(selected_disk, dir_name);
+  current_dir_inode = INODE_TABLE_OFFSET; // premier inode c'est le root
+  strcpy(current_path, dir_name_getter(current_dir_inode));
 
   while (1) {
-    printf("%s >", dir_name);
+    printf("%s > ", current_path);
     fflush(stdout);
     if (!fgets(command, sizeof(command), stdin)) {
       printf("Erreur de lecture.\n");

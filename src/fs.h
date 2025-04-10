@@ -79,8 +79,6 @@ typedef struct {
   char name[MAX_FILENAME_LENGTH];
 } inode_t;
 
-// Variable globale pour stocker le disque select
-
 int new_disk(const char *disk_name, int size_mb);
 void init_disk(const char *disk_name, int disk_size);
 void init_root_dir(const char *disk_name);
