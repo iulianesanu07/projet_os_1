@@ -12,7 +12,7 @@ SRC_FILES = $(SRC_DIR)/main.c $(SRC_DIR)/fs.c $(SRC_DIR)/utils.c $(SRC_DIR)/term
 OBJ_FILES = $(SRC_FILES:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 
 # Options de compilation
-CC = clang
+CC = gcc
 CFLAGS = -Wall -Werror -g
 
 # Cibles par défaut

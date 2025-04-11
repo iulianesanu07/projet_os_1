@@ -36,10 +36,16 @@ void cmd_touch(char *arg) {
     return;
   }
 
-  int inode = new_file(selected_disk, TYPE_INODE_FILE, 0b11111010, arg);
-  printf("inode du fichier %s : %d\n", arg, inode);
-  
-  // fonction add file to dir a implementer 
+  int inode_file = new_file(selected_disk, TYPE_INODE_FILE, 0b11111010, arg);
+
+  add_file_to_dir(inode_file, current_dir_inode, disk);
+
+  fclose(disk);
+  disk = fopen(selected_disk, "r+b");
+  if (!disk) {
+    perror("Erreur lors de l'ouverture du fichier disque");
+    return;
+  }
   
   return;
 }

@@ -32,7 +32,7 @@
 #define INODE_NAME_OFFSET           INODE_MODIFIED_AT_OFFSET + 8      
 
 #define MAX_FILENAME_LEN 32
-#define MAX_DIRECTORY_ENTRIES 16
+#define MAX_DIRECTORY_ENTRIES (BLOCK_SIZE / 4) // 128 entites max possibles dans un dossier
 
 // errors/ info
 #define INODE_TABLE_FULL -1
@@ -86,6 +86,7 @@ int new_file(const char *disk_name, char file_type, char permissions,char file_n
 int first_empty_inode_slot(FILE *disk);
 int first_empty_block_slot(FILE *disk);
 int get_block_slot(FILE* disk, int id_block_bitmap);
+void add_file_to_dir(int inode_file, int inode_dir, FILE *disk);
 
 
 #endif //__FS__H__

@@ -157,6 +157,42 @@ void init_root_dir(const char*disk_name) {
   return;
 }
 
+// Ajoute le num de l'inode du file (qui peut etre aussi dossier) au
+// block de donnees du dir
+void add_file_to_dir(int inode_file, int inode_dir, FILE *disk) {
+  // a ajouter la verif des permissions (ici ou dans le touch directement)
+
+  // Trouver l'adresse du block de donnees du dir dans lequel ajouter le fichier
+  fseek(disk, INODE_TABLE_OFFSET + (inode_dir * INODE_SIZE) + INODE_BLOCKS_OFFSET, SEEK_SET);
+  int adresse_datablock_dir;
+  fread(&adresse_datablock_dir, sizeof(int), 1, disk);
+
+  char data_block[BLOCK_SIZE];
+  fseek(disk, DATA_BLOCKS_OFFSET + (adresse_datablock_dir * BLOCK_SIZE), SEEK_SET);
+  fread(data_block, BLOCK_SIZE, 1, disk);
+
+  // cette boucle permet de lire le data_block du dossier comme un tableau de int, de trouver l'emplacement
+  // libre et d'y ecrire l'inode_file
+  bool inserted = false;
+  for (int i = 0; i < MAX_DIRECTORY_ENTRIES; i++) {
+    int *entry_ptr = (int*)(data_block + i * sizeof(int));
+    if (*entry_ptr == 0) {  // l'emplacement est libre
+      *entry_ptr = inode_file;
+      
+      // Ecriture dans le block de donnees du dossier
+      fseek(disk, DATA_BLOCKS_OFFSET + (adresse_datablock_dir * BLOCK_SIZE), SEEK_SET);
+      fwrite(data_block, BLOCK_SIZE, 1, disk);
+      inserted = true;
+      break;
+    }
+  }
+
+  if (!inserted) {
+    printf("Erreur : le dossier inode %d est plein. Il est impossible de depasser 128 elements par dossier, impossible donc de creer ce fichier.\n", inode_dir);
+  }
+
+  return;
+}
 
 
 /* Future code, peut etre si suffisement de temps. (il n'y aura pas suffisement de temps x) 
