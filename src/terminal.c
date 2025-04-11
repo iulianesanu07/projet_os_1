@@ -24,9 +24,31 @@ void execute_command(char *cmd, char *arg) {
   printf("Commande inconnue : %s\n", cmd);
 }
 
-// Implémentation des commandes
+
 void cmd_ls(char *arg) {
-  printf("Affichage du contenu du disque... (À implémenter)\n");
+  // recuperation adresse datablock du dossier
+  fseek(disk, INODE_TABLE_OFFSET + (current_dir_inode * INODE_SIZE) + INODE_BLOCKS_OFFSET, SEEK_SET);
+  int data_block_adr;
+  fread(&data_block_adr, sizeof(int), 1, disk);
+
+  // recuperation du datablock en lui meme pour traitement
+  fseek(disk, DATA_BLOCKS_OFFSET + (data_block_adr * BLOCK_SIZE), SEEK_SET);
+  char data_block[BLOCK_SIZE];
+  fread(data_block, BLOCK_SIZE, 1, disk);
+
+  for (int i = 0; i < MAX_DIRECTORY_ENTRIES; i++) {
+    int *entry_ptr = (int*)(data_block + i * sizeof(int));
+    if (*entry_ptr != 0) {
+      // recuperation du nom du fichier
+      fseek(disk, INODE_TABLE_OFFSET + (*entry_ptr * INODE_SIZE) + INODE_NAME_OFFSET, SEEK_SET);
+      char file_name[MAX_FILENAME_LENGTH];
+      fread(file_name, sizeof(char) * MAX_FILENAME_LENGTH, 1, disk);
+
+      printf("n inode : %d, %s\n", *entry_ptr, file_name);
+    }  
+  }
+
+  return;
 }
 
 void cmd_touch(char *arg) {
@@ -40,6 +62,8 @@ void cmd_touch(char *arg) {
 
   add_file_to_dir(inode_file, current_dir_inode, disk);
 
+  // Petit code pas tres "propre", sert a actualiser le disque pour que les modifications soient
+  // appliques
   fclose(disk);
   disk = fopen(selected_disk, "r+b");
   if (!disk) {
