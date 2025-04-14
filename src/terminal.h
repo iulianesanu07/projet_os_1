@@ -19,6 +19,11 @@ FILE *disk;
 char current_path[MAX_FILENAME_LENGTH * 32];
 int current_dir_inode;    ///> Position dans le disque de l'inode
 
+// Variables/ressources de manipulation de fichiers
+int cursor;
+char opened_file[BLOCK_SIZE * BLOCKS_PER_INODE_MAX];
+
+
 /**
  * @brief Scructure de commande
  * Elle associe le nom d'une commande a sa fonction.
@@ -37,7 +42,16 @@ void cmd_touch(char *arg);
 void cmd_size(char *arg);
 void cmd_chmod(char *arg);
 void cmd_mkdir(char *arg);
+void cmd_rm(char *arg);
 void execute_command(char *cmd, char *arg);
 char* dir_name_getter(int current_dir_inode);
+void print_binary(char c);
+
+// fonctions excel
+void open(int inode);
+void close(int inode);
+void read(char *readed, int size);
+void write(char *to_write, int size);
+void lseek(int i);
 
 #endif // __TERMINAL__H__

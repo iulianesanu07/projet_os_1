@@ -80,6 +80,7 @@ int first_empty_inode_slot(FILE *disk) {
     fread(&verif, sizeof(time_t), 1, disk);
 //    printf("verif lu : %d\n", (int)verif);
     if (verif == 0) {
+      printf("first_empty_inode_slote : %d\n", i);
       return i;
     }
   }
@@ -93,6 +94,7 @@ int first_empty_block_slot(FILE *disk) {
     bool id = 1;
     fread(&id, sizeof(bool), 1, disk);
     if (id == 0) { // block not used
+      printf("first_empty_block_slot : %d\n", i);
       return i;
     }
   }
@@ -100,10 +102,43 @@ int first_empty_block_slot(FILE *disk) {
   return BLOCK_BITMAP_FULL;
 }
 
-// globalement ca converti un block vide sur la bitmap en son emplacement reel dans le disque
-int get_block_slot(FILE* disk, int id_block_bitmap) {
+/*
+ * %brief Permet de supprimer un fichier/dossier
+ * Remet un "blank" a la place de l'inode du fichier (suppression)
+ * et libere la "case" de la bitmap correspondante ainsi que le block
+ * lui meme (on aurait pu s'en passer mais c'est un moyen de se proteger
+ * contre d'eventuelles betises)
+ */
+void supr(int inode, FILE *disk) {
   
-  return DATA_BLOCKS_OFFSET + (id_block_bitmap * BLOCK_SIZE);
+  // Pour chaque block de donnees du tableau de blocks de l'inode du fichier, 
+  // on libere la "case" de la bitmap correspondante ainsi que le block lui meme.
+  for (int i = 0; i < BLOCKS_PER_INODE_MAX; i++) {
+    fseek(disk, INODE_TABLE_OFFSET + (inode * INODE_SIZE) + INODE_BLOCKS_OFFSET + i * sizeof(int), SEEK_SET);
+    int temp_block_adr;
+    fread(&temp_block_adr, sizeof(int), 1, disk);
+    if (temp_block_adr != -1) {
+
+      // bitmap liberee
+      fseek(disk, BLOCK_BITMAP_OFFSET + temp_block_adr, SEEK_SET);
+      bool unused = 0;
+      fwrite(&unused, sizeof(bool), 1, disk);
+
+      // liberation block de donnees
+      char blank[BLOCK_SIZE];
+      memset(blank, 0, BLOCK_SIZE);
+      fseek(disk, DATA_BLOCKS_OFFSET + (temp_block_adr * BLOCK_SIZE), SEEK_SET);
+      fwrite(blank, BLOCK_SIZE, 1, disk);
+    }
+  }
+
+  // liberation inode
+  char blank_inode[INODE_SIZE];
+  memset(blank_inode, 0, INODE_SIZE);
+  fseek(disk, INODE_TABLE_OFFSET + (inode * INODE_SIZE), SEEK_SET);
+  fwrite(blank_inode, INODE_SIZE, 1, disk);
+
+  return;
 }
 
 // creation inode "pure"
@@ -137,11 +172,23 @@ int new_file(const char *disk_name, char file_type, char permissions, char file_
   new_inode.size = 0;
   new_inode.type = file_type;
   new_inode.permissions = permissions;
-  new_inode.blocks[0] = get_block_slot(disk, block_id);
+  new_inode.blocks[0] = block_id;
+
+  for (int i = 1; i < BLOCKS_PER_INODE_MAX; i++) {
+    new_inode.blocks[i] = -1;
+  }
+
   new_inode.block_count = 1;
   new_inode.created_at = time(NULL);
   new_inode.modified_at = time(NULL);
   strncpy(new_inode.name, file_name, MAX_FILENAME_LENGTH); 
+
+  /* (pour dev) permet d'afficher l'adresse de chaque block de donnees de l'inode
+  for (int i = 0; i < BLOCKS_PER_INODE_MAX; i++) {
+    printf("%d ", new_inode.blocks[i]);
+  }
+  printf("\n");
+  */
 
 
   fseek(disk, INODE_TABLE_OFFSET + inode * INODE_SIZE, SEEK_SET);
@@ -153,7 +200,6 @@ int new_file(const char *disk_name, char file_type, char permissions, char file_
 
 void init_root_dir(const char*disk_name) {
   new_file(disk_name, TYPE_INODE_ROOT_DIR, 0b11110101, "root");
-
   return;
 }
 
@@ -182,6 +228,14 @@ void add_file_to_dir(int inode_file, int inode_dir, FILE *disk) {
       // Ecriture dans le block de donnees du dossier
       fseek(disk, DATA_BLOCKS_OFFSET + (adresse_datablock_dir * BLOCK_SIZE), SEEK_SET);
       fwrite(data_block, BLOCK_SIZE, 1, disk);
+
+      // Actualise la taille du dossier
+      fseek(disk, INODE_TABLE_OFFSET + (inode_dir * INODE_SIZE) + INODE_SIZE_OFFSET, SEEK_SET);
+      int size;
+      fread(&size, sizeof(int), 1, disk);
+      size += sizeof(int);
+      fwrite(&size, sizeof(int), 1, disk);
+
       inserted = true;
       break;
     }
@@ -193,55 +247,3 @@ void add_file_to_dir(int inode_file, int inode_dir, FILE *disk) {
 
   return;
 }
-
-
-/* Future code, peut etre si suffisement de temps. (il n'y aura pas suffisement de temps x) 
-void init_disk(const char *file_name, int disk_size) {
-  Superblock sb;
-  sb.disk_size = disk_size * 1024 * 1024;
-  sb.block_size = BLOCK_SIZE;
-
-  puts("mais on arrive la ?");
-
-  size_t total_blocks = sb.disk_size / BLOCK_SIZE;
-  size_t total_inodes = total_blocks / 10;
-  size_t inode_table_size = total_blocks * INODE_SIZE;
-  size_t inode_table_blocks = (inode_table_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  size_t bitmap_size = total_blocks / 32;
-  size_t bitmap_blocks = (bitmap_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
-  size_t data_blocks = total_blocks - (1 + bitmap_blocks + inode_table_blocks);
-
-  sb.block_count = data_blocks;
-  sb.inode_count = total_inodes;
-  sb.free_blocks = data_blocks;
-  sb.free_inodes = total_inodes;
-  sb.bitmap_start = sizeof(Superblock);
-  sb.inode_table_start = sb.bitmap_start + bitmap_blocks * BLOCK_SIZE;
-  sb.first_data_block = sb.inode_table_start + sb.inode_count * INODE_SIZE;
-
-  FILE *file =
-      fopen(file_name, "r+b"); // ouvre en mode lecture/écriture binaire
-  if (!file) {
-    printf("Erreur lors de l'ouverture du disque.\n");
-    fclose(file);
-    return;
-  }
-
-  printf("Disque : %d MB\n", disk_size);
-  printf("- Nombre total de blocs : %lu\n", total_blocks);
-  printf("- Nombre total d'inodes : %lu\n", total_inodes);
-  printf("- Taille de la table des inodes : %lu octets (%lu blocs)\n",
-         inode_table_size, inode_table_blocks);
-  printf("- Taille de la bitmap des blocs : %lu octets (%lu blocs)\n",
-         bitmap_size, bitmap_blocks);
-  printf("- Blocs disponibles pour les données : %lu\n", data_blocks);
-
-  printf("Le disque '%s' a été créé avec succès, taille: %d Mo\n", file_name,
-         disk_size);
-
-  //create_root_directory(file);
-
-  fwrite(&sb, sizeof(Superblock), 1, file);
-  fclose(file);
-}
-*/

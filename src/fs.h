@@ -10,6 +10,7 @@
 #define DISK_SIZE_MB 6
 #define MAX_FILENAME_LENGTH 25
 #define INODE_SIZE 128
+#define BLOCKS_PER_INODE_MAX 10
 
 #define INODE_COUNT 1024
 #define BLOCK_COUNT 10240
@@ -87,6 +88,7 @@ int first_empty_inode_slot(FILE *disk);
 int first_empty_block_slot(FILE *disk);
 int get_block_slot(FILE* disk, int id_block_bitmap);
 void add_file_to_dir(int inode_file, int inode_dir, FILE *disk);
+void supr(int inode, FILE *disk);
 
 
 #endif //__FS__H__
